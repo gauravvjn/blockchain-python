@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+import requests
 from flask import Flask, request, jsonify
 
 from blockchain import BlockChain
@@ -12,8 +13,8 @@ blockchain = BlockChain()
 node_address = uuid4().hex  # Unique address for current node
 
 
-@app.route('/api/transactions', methods=['POST'])
-def new_transaction():
+@app.route('/create-transaction', methods=['POST'])
+def create_transaction():
     transaction_data = request.get_json()
 
     index = blockchain.create_new_transaction(**transaction_data)
@@ -26,7 +27,7 @@ def new_transaction():
     return jsonify(response), 201
 
 
-@app.route('/api/mine', methods=['GET'])
+@app.route('/mine', methods=['GET'])
 def mine():
     block = blockchain.mine_block(node_address)
 
@@ -37,22 +38,67 @@ def mine():
     return jsonify(response)
 
 
-@app.route('/api/chain', methods=['GET'])
+@app.route('/chain', methods=['GET'])
 def full_chain():
     response = {
-        'chain': [vars(block) for block in blockchain.chain]
+        'chain': blockchain.get_serialized_chain
     }
-    return jsonify(response), 200
+    return jsonify(response)
 
 
-@app.route('/api/nodes/register', methods=['POST'])
-def register_nodes():
-    return 'TODO'
+@app.route('/register-node', methods=['POST'])
+def register_node():
+
+    node_data = request.get_json()
+
+    blockchain.create_node(node_data.get('address'))
+
+    response = {
+        'message': 'New node has been added',
+        'node_count': len(blockchain.nodes),
+        'nodes': list(blockchain.nodes),
+    }
+    return jsonify(response), 201
 
 
-@app.route('/api/nodes/resolve', methods=['GET'])
+@app.route('/sync-chain', methods=['GET'])
 def consensus():
-    return 'TODO'
+
+    def get_neighbour_chains():
+        neighbour_chains = []
+        for node_address in blockchain.nodes:
+            resp = requests.get(node_address + "/chain").json()
+            chain = resp['chain']
+            neighbour_chains.append(chain)
+        return neighbour_chains
+
+    neighbour_chains = get_neighbour_chains()
+    if not neighbour_chains:
+        return jsonify({'message': 'no neighbour_chain available'})
+
+    longest_chain = max(neighbour_chains, key=len)  # If our chain isn't longest, then we store the longest chain
+
+    if blockchain.get_serialized_chain != longest_chain:
+        blockchain.chain = [blockchain.get_block_object_from_block_data(block) for block in longest_chain]
+        response = {
+            'message': 'Chain was replaced',
+            'chain': blockchain.get_serialized_chain
+        }
+    else:
+        response = {
+            'message': 'Our chain is up to date',
+            'chain': blockchain.get_serialized_chain
+        }
+
+    return jsonify(response)
 
 
-app.run()
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
+    args = parser.parse_args()
+    port = args.port
+
+    app.run(debug=True, port=port)

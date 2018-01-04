@@ -4,12 +4,12 @@ import hashlib
 
 class Block(object):
 
-    def __init__(self, index, proof, previous_hash, transactions):
+    def __init__(self, index, proof, previous_hash, transactions, timestamp=None):
         self.index = index
         self.proof = proof
         self.previous_hash = previous_hash
         self.transactions = transactions
-        self.timestamp = time.time()
+        self.timestamp = timestamp or time.time()
 
     @property
     def get_block_hash(self):
@@ -25,7 +25,12 @@ class BlockChain(object):
     def __init__(self):
         self.chain = []
         self.current_node_transactions = []
+        self.nodes = set()
         self.create_genesis_block()
+
+    @property
+    def get_serialized_chain(self):
+        return [vars(block) for block in self.chain]
 
     def create_genesis_block(self):
         self.create_new_block(proof=0, previous_hash=0)
@@ -64,7 +69,7 @@ class BlockChain(object):
             'recipient': recipient,
             'amount': amount
         })
-        return self.get_last_block.index + 1  # Returning new block's index where this transaction will be stored
+        return True
 
     @staticmethod
     def is_valid_transaction():
@@ -130,3 +135,17 @@ class BlockChain(object):
         block = self.create_new_block(proof, last_hash)
 
         return vars(block)  # Return a native Dict type object
+
+    def create_node(self, address):
+        self.nodes.add(address)
+        return True
+
+    @staticmethod
+    def get_block_object_from_block_data(block_data):
+        return Block(
+            block_data['index'],
+            block_data['proof'],
+            block_data['previous_hash'],
+            block_data['transactions'],
+            timestamp=block_data['timestamp']
+        )
