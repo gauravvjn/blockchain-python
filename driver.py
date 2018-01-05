@@ -11,7 +11,7 @@ blockchain = BlockChain()
 
 def print_blockchain(chain):
     for block in chain:
-        print(block)
+        print(vars(block))
 
 
 def class_tests():
@@ -83,5 +83,5 @@ def api_tests():
 
 
 if __name__ == "__main__":
-    # class_tests()
+    class_tests()
     api_tests()

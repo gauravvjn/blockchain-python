@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, url_for
 
 from blockchain import BlockChain
 
@@ -39,7 +39,7 @@ def mine():
 
 
 @app.route('/chain', methods=['GET'])
-def full_chain():
+def get_full_chain():
     response = {
         'chain': blockchain.get_serialized_chain
     }
@@ -67,7 +67,7 @@ def consensus():
     def get_neighbour_chains():
         neighbour_chains = []
         for node_address in blockchain.nodes:
-            resp = requests.get(node_address + "/chain").json()
+            resp = requests.get(node_address + url_for('get_full_chain')).json()
             chain = resp['chain']
             neighbour_chains.append(chain)
         return neighbour_chains
@@ -94,11 +94,11 @@ def consensus():
 
 
 if __name__ == '__main__':
+
     from argparse import ArgumentParser
-
     parser = ArgumentParser()
-    parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
+    parser.add_argument('-H', '--host', default='127.0.0.1')
+    parser.add_argument('-p', '--port', default=5000, type=int)
     args = parser.parse_args()
-    port = args.port
 
-    app.run(debug=True, port=port)
+    app.run(host=args.host, port=args.port, debug=True)
