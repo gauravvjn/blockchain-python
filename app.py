@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import requests
-from flask import Flask, request, jsonify, url_for
+from flask import Flask, jsonify, url_for, request
 
 from blockchain import BlockChain
 
@@ -15,6 +15,14 @@ node_address = uuid4().hex  # Unique address for current node
 
 @app.route('/create-transaction', methods=['POST'])
 def create_transaction():
+    """
+    Input Payload:
+    {
+        "sender": "address_1"
+        "recipient": "address_2",
+        "amount": 3
+    }
+    """
     transaction_data = request.get_json()
 
     index = blockchain.create_new_transaction(**transaction_data)
@@ -74,19 +82,19 @@ def consensus():
 
     neighbour_chains = get_neighbour_chains()
     if not neighbour_chains:
-        return jsonify({'message': 'no neighbour_chain available'})
+        return jsonify({'message': 'No neighbour chain is available'})
 
-    longest_chain = max(neighbour_chains, key=len)  # If our chain isn't longest, then we store the longest chain
+    longest_chain = max(neighbour_chains, key=len)  # Get the longest chain
 
-    if blockchain.get_serialized_chain != longest_chain:
+    if len(blockchain.chain) >= len(longest_chain):  # If our chain is longest, then do nothing
+        response = {
+            'message': 'Chain is already up to date',
+            'chain': blockchain.get_serialized_chain
+        }
+    else:  # If our chain isn't longest, then we store the longest chain
         blockchain.chain = [blockchain.get_block_object_from_block_data(block) for block in longest_chain]
         response = {
             'message': 'Chain was replaced',
-            'chain': blockchain.get_serialized_chain
-        }
-    else:
-        response = {
-            'message': 'Our chain is up to date',
             'chain': blockchain.get_serialized_chain
         }
 
